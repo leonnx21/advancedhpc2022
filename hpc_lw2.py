@@ -18,23 +18,25 @@ drive.mount('/content/drive')
 im = plt.imread("/content/drive/MyDrive/Colab Notebooks/image.jpg")
 
 shape = np.shape(im)
-shape
 
 imflatten = im.copy().reshape(shape[0]*shape[1],3)
+
+(imflatten[0][0] + imflatten[0][1] + imflatten[0][2])/3
 
 shape2 = np.shape(imflatten)
 
 t1 = time.time()
+imtemp = np.empty_like(imflatten)
 
-for i in imflatten:
-  gray = ((i[0]+i[1]+[2])/3)
-  i[0], i[1], i[2] = gray, gray, gray
+for i, pixel in enumerate(imflatten):
+  gray = np.uint8((int(pixel[0]) + int(pixel[1]) + int(pixel[2]))/3)
+  imtemp[i][0] = imtemp[i][1] = imtemp[i][2] = gray
 
 t2 = time.time()
 
 print(t2-t1)
 
-imgray1 = imflatten.reshape(1080, 1920, 3)
+imgray1 = imtemp.reshape(1080, 1920, 3)
 
 from PIL import Image
 imcpu = Image.fromarray(imgray1)
@@ -71,3 +73,5 @@ imgray2 = devOuput.copy_to_host()
 imgray3 = imgray2.reshape(1080, 1920, 3)
 imgpu = Image.fromarray(imgray3)
 imgpu.save("/content/drive/MyDrive/Colab Notebooks/image_gray_GPU.jpeg")
+
+imgray3

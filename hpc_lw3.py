@@ -33,16 +33,30 @@ def grayscale(src, dst):
   g = np.uint8((src[tidx, tidy, 0] + src[tidx, tidy, 1] + src[tidx, tidy, 2]) / 3)
   dst[tidx, tidy, 0] = dst[tidx, tidy, 1] = dst[tidx, tidy, 2] = g
 
-t3 = time.time()
+def testfunc(x):
+  t1 = time.time()
+  blockSize = (x, x)
+  gridSize = (math.ceil(shape[0]/blockSize[0]),math.ceil(shape[1]/blockSize[1]))
+  grayscale[gridSize, blockSize](devdata, devOuput)
+  t2 = time.time()
+  t = t2 - t1
 
-blockSize = (32, 32)
-gridSize = (math.ceil(shape[0]/blockSize[0]),math.ceil(shape[1]/blockSize[1]))
-grayscale[gridSize, blockSize](devdata, devOuput)
+  return t
 
-t4 = time.time()
+x =  list(range(1, 33))
+result = []
 
-print(t4-t3)
+for i in x:
+  t3 = testfunc(i)
+  result.append(t3)
 
-imgray = devOuput.copy_to_host()
-imgpu = Image.fromarray(imgray)
-imgpu.save("/content/drive/MyDrive/Colab Notebooks/image_gray_GPU_2.jpeg")
+plt.bar(x, result)
+plt.yscale("log")
+
+
+
+result
+
+#imgray = devOuput.copy_to_host()
+#imgpu = Image.fromarray(imgray)
+#imgpu.save("/content/drive/MyDrive/Colab Notebooks/image_gray_GPU_2.jpeg")

@@ -83,7 +83,7 @@ for i in range(10):
 imgpu = Image.fromarray(im3)
 imgpu.save("/content/drive/MyDrive/Colab Notebooks/image_blur_CPU3.jpeg")
 
-#GPU1
+
 
 @cuda.jit
 def blurgpu1(kernel, src, dst):
@@ -95,23 +95,36 @@ def blurgpu1(kernel, src, dst):
 
   for ni, i in enumerate(range(-3,3)):
     for nj, j in enumerate(range(-3,3)):
-      r+= np.uint8(src[tidx+i,tidy+j,0]*kernel[ni,nj])
-      g+= np.uint8(src[tidx+i,tidy+j,1]*kernel[ni,nj])
-      b+= np.uint8(src[tidx+i,tidy+j,2]*kernel[ni,nj])
+      r+= np.uint32(src[tidx+i,tidy+j,0]*kernel[ni,nj])
+      g+= np.uint32(src[tidx+i,tidy+j,1]*kernel[ni,nj])
+      b+= np.uint32(src[tidx+i,tidy+j,2]*kernel[ni,nj])
+  
   dst[tidx, tidy, 0 ] = r
   dst[tidx, tidy, 1 ] = g
   dst[tidx, tidy, 2 ] = b
 
-devdata = cuda.to_device(im)
-devOuput = cuda.device_array(shape, np.uint8)
-kerneldev = cuda.to_device(filter2)
+#GPU1
+def GPUblurfunc(im, filter):
+  devdata = cuda.to_device(im)
+  devOuput = cuda.device_array(shape, np.uint8)
+  kerneldev = cuda.to_device(filter2)
 
-blockSize = (16,16)
-gridSize = (math.ceil(shape[0]/blockSize[0]),math.ceil(shape[1]/blockSize[1]))
-blurgpu1[gridSize, blockSize](kerneldev ,devdata, devOuput)
+  shape1 = np.shape(im)
+  blockSize = (16,16)
+  gridSize = (math.ceil(shape1[0]/blockSize[0]),math.ceil(shape1[1]/blockSize[1]))
+  blurgpu1[gridSize, blockSize](kerneldev ,devdata, devOuput)
 
-imblurgpu = devOuput.copy_to_host()
-imgpu = Image.fromarray(imblurgpu)
+  result = devOuput.copy_to_host()
+
+  return result
+
+im4 = im.copy()
+
+for i in range(5):
+  im4 = GPUblurfunc(im4,filter2)
+
+
+imgpu = Image.fromarray(im4)
 imgpu.save("/content/drive/MyDrive/Colab Notebooks/image_blur_GPU.jpeg")
 
 imgpu

@@ -95,19 +95,19 @@ def blurgpu1(kernel, src, dst):
 
   for ni, i in enumerate(range(-3,3)):
     for nj, j in enumerate(range(-3,3)):
-      r+= np.uint32(src[tidx+i,tidy+j,0]*kernel[ni,nj])
-      g+= np.uint32(src[tidx+i,tidy+j,1]*kernel[ni,nj])
-      b+= np.uint32(src[tidx+i,tidy+j,2]*kernel[ni,nj])
+      r+= (src[tidx+i,tidy+j,0]*kernel[ni,nj])
+      g+= (src[tidx+i,tidy+j,1]*kernel[ni,nj])
+      b+= (src[tidx+i,tidy+j,2]*kernel[ni,nj])
   
-  dst[tidx, tidy, 0 ] = r
-  dst[tidx, tidy, 1 ] = g
-  dst[tidx, tidy, 2 ] = b
+  dst[tidx, tidy, 0 ] = np.uint8(r)
+  dst[tidx, tidy, 1 ] = np.uint8(g)
+  dst[tidx, tidy, 2 ] = np.uint8(b)
 
 #GPU1
 def GPUblurfunc(im, filter):
   devdata = cuda.to_device(im)
   devOuput = cuda.device_array(shape, np.uint8)
-  kerneldev = cuda.to_device(filter2)
+  kerneldev = cuda.to_device(filter)
 
   shape1 = np.shape(im)
   blockSize = (16,16)
@@ -118,13 +118,63 @@ def GPUblurfunc(im, filter):
 
   return result
 
-im4 = im.copy()
+im3 = im.copy()
 
-for i in range(5):
-  im4 = GPUblurfunc(im4,filter2)
+for i in range(10):
+  im3 = GPUblurfunc(im3,filter2)
 
-
-imgpu = Image.fromarray(im4)
+imgpu = Image.fromarray(im3)
 imgpu.save("/content/drive/MyDrive/Colab Notebooks/image_blur_GPU.jpeg")
 
 imgpu
+
+"""#With shared filter"""
+
+@cuda.jit
+def blurgpu2(kernel, src, dst):
+  tile = cuda.shared.array((7,7),np.float64)
+  tidx = cuda.threadIdx.x + cuda.blockIdx.x * cuda.blockDim.x
+  tidy = cuda.threadIdx.y + cuda.blockIdx.y * cuda.blockDim.y
+ 
+  tile = kernel
+  
+  r = 0
+  g = 0
+  b = 0
+
+  for ni, i in enumerate(range(-3,3)):
+    for nj, j in enumerate(range(-3,3)):
+      r+= (src[tidx+i,tidy+j,0]*tile[ni,nj])
+      g+= (src[tidx+i,tidy+j,1]*tile[ni,nj])
+      b+= (src[tidx+i,tidy+j,2]*tile[ni,nj])
+  
+  dst[tidx, tidy, 0 ] = np.uint8(r)
+  dst[tidx, tidy, 1 ] = np.uint8(g)
+  dst[tidx, tidy, 2 ] = np.uint8(b)
+
+  cuda.syncthreads()
+
+#GPU2
+def GPUblurfunc2(im, filter):
+  devdata = cuda.to_device(im)
+  devOuput = cuda.device_array(shape, np.uint8)
+  kerneldev = cuda.to_device(filter)
+
+  shape1 = np.shape(im)
+  blockSize = (16,16)
+  gridSize = (math.ceil(shape1[0]/blockSize[0]),math.ceil(shape1[1]/blockSize[1]))
+  blurgpu2[gridSize, blockSize](kerneldev ,devdata, devOuput)
+
+  result = devOuput.copy_to_host()
+
+  return result
+
+im5 = im.copy()
+
+for i in range(20):
+  im5 = GPUblurfunc2(im5,filter2)
+
+imgpu2 = Image.fromarray(im5)
+imgpu2.save("/content/drive/MyDrive/Colab Notebooks/image_blur_GPU2.jpeg")
+
+imgpu2
